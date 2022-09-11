@@ -1,8 +1,7 @@
 import random
 from typing import List, Sequence, Tuple
 
-from joblib import Parallel, delayed # type: ignore
-
+from joblib import Parallel, delayed  # type: ignore
 from lib.battle import BattleSummary, Pokemon, simulate_battle
 
 
@@ -16,7 +15,7 @@ class Tournament:
     """
 
     def __init__(
-        self, participants: Sequence[Pokemon], num_arenas: int, random_seed: int = 0
+            self, participants: Sequence[Pokemon], num_arenas: int, random_seed: int = 0
     ) -> None:
         self._paticipants = participants
         self._num_arenas = num_arenas
@@ -31,14 +30,24 @@ class Tournament:
 
         This method returns the summary of each battle run during the stage.
         """
-        raise NotADirectoryError
+        results = Parallel(n_jobs=self._num_arenas)(
+            delayed(simulate_battle)(p1, p2)
+            for p1, p2 in self.next_matches
+        )
+
+        next_participants = [battle.winner for battle in results]
+        next_matches = _create_matches(next_participants)
+        if len(next_matches) == 1 and next_matches[0][0].name == next_matches[0][1].name:
+            next_matches = []
+        self._next_matches = next_matches
+        return results
 
     @property
     def next_matches(self) -> List[Tuple[Pokemon, Pokemon]]:
         return self._next_matches
 
 
-def _create_matches(participants: Sequence[Pokemon])-> List[Tuple[Pokemon, Pokemon]]:
+def _create_matches(participants: Sequence[Pokemon]) -> List[Tuple[Pokemon, Pokemon]]:
     """Takes a sequence of Pokémons and matches them randomly.
 
     If the sequence is not even then one participant will be matched with
@@ -46,4 +55,14 @@ def _create_matches(participants: Sequence[Pokemon])-> List[Tuple[Pokemon, Pokem
 
     `random_seed` is used for reproducible results.
     """
-    raise NotImplementedError
+    participants = random.sample(participants, len(participants))
+    matchs = []
+
+    if len(participants) % 2:
+        pokemon = participants.pop()
+        matchs.append((pokemon, pokemon))
+
+    while participants:
+        matchs.append((participants.pop(), participants.pop()))
+
+    return matchs
